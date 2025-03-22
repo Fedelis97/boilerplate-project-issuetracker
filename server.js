@@ -4,13 +4,19 @@ const express     = require('express');
 const bodyParser  = require('body-parser');
 const expect      = require('chai').expect;
 const cors        = require('cors');
+
 require('dotenv').config();
 
 const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
 const runner            = require('./test-runner');
+const MyController = require("./controllers/controller");
 
+const myDB = require('./connections');
+// const URI = process.env.MONGO_URI;
+// const store = new MongoStore({ url: URI });
 let app = express();
+
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
@@ -35,9 +41,21 @@ app.route('/')
 
 //For FCC testing purposes
 fccTestingRoutes(app);
+apiRoutes(app); 
 
 //Routing for API 
-apiRoutes(app);  
+myDB(async (client) => {
+  try {
+    const db = client.db('database');
+    app.locals.myController = new MyController(db);
+
+  } catch (e) {
+    console.error("Database connection error:", e);
+    app.get('/', (req, res) => {
+      res.render('index', { title: 'Error', message: 'Unable to connect to database' });
+    });
+  }
+});
     
 //404 Not Found Middleware
 app.use(function(req, res, next) {
